@@ -358,6 +358,30 @@ def samze_weight(proba, act_ans, error):
     return(sum(wrong_prob)/sum(sum_prob))
 
 
+#實際答案在預測結果的預測機率
+#proba:弱分類器預測機率
+#act_ans:實際答案
+def act_ans_prob(proba, act_ans):
+
+    #將預測機率四捨五入
+    proba_temp = []
+    for i in proba:
+        #print(i)
+        #print(type(i))
+        sumone= softmax(i)#將數值總和調整為1
+        zun = list(np.around(sumone, 5))#把數值四捨五入以免存不下
+        #print(zun)
+        proba_temp.append(zun)    
+    proba = proba_temp
+    
+    #存下實際答案在預測結果的預測機率
+    actans_prob = []
+    for aa, p in zip(act_ans, proba):
+        actans_prob.append(p[aa])
+    
+    return actans_prob
+    
+    
 class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
     """An AdaBoost classifier.
 
@@ -654,6 +678,7 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
 
         # Instances incorrectly classified
         incorrect = y_predict != y
+        #print('預測錯誤的:', incorrect)
 
 
 #---------------------------------------------------------------------------------------------------------        
@@ -662,7 +687,7 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
         #原方法
         estimator_error_o = np.mean(
             np.average(incorrect, weights=sample_weight, axis=0))
-        print('SAMME弱分類器錯誤率 : ', estimator_error_o)
+        #print('SAMME弱分類器錯誤率 : ', estimator_error_o)
         #'''
         
         #'''
@@ -678,18 +703,32 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
         #print('答案維度:', act_ans.shape)
         #print('答案型態:', type(act_ans))
 
-        estimator_error_my = samze_weight(proba, act_ans, error = 'all')
-        print('SAMME改弱分類器錯誤率 : ', estimator_error_my)
+        estimator_error_my = samze_weight(proba, act_ans, error = 'semi')
+        #print('SAMME改弱分類器錯誤率 : ', estimator_error_my)
         #'''
 
-        #estimator_error = estimator_error_o
+        estimator_error = estimator_error_o
         #estimator_error = estimator_error_my
-        estimator_error = (estimator_error_o + estimator_error_my) / 2
+        
+        #方法一，相加除二
+        #estimator_error = (estimator_error_o + estimator_error_my) / 2
+        
+        #方法二，相乘開根號
         #estimator_error = (estimator_error_o * estimator_error_my) ** 0.5
+        
+        #方法三，將 各資料的權重*實際答案在弱分類器的預測機率 平均
+        actans_prob = act_ans_prob(proba, act_ans)
+        #print('實際答案在弱分類器的預測機率 : ', len(actans_prob))
+        estimator_error = np.mean(np.average(actans_prob, weights=sample_weight, axis=0)) - 0.5
+        #estimator_error = np.mean(np.average(sample_weight, weights=actans_prob, axis=0))
+        #print('SAMME弱分類器錯誤率 : ', estimator_error)
+
         
         if(estimator_error == 0.5):
             estimator_error = 0.5000000000000000000001
-        print('弱分類器綜合錯誤率:', estimator_error)
+        elif(estimator_error == 1.0):
+            estimator_error = 0.9999999999999999999999
+        print('弱分類器錯誤率:', estimator_error)
 
 #---------------------------------------------------------------------------------------------------------  
 
