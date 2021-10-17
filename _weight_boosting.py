@@ -313,6 +313,8 @@ def _samme_proba(estimator, n_classes, X):
     return (n_classes - 1) * (log_proba - (1. / n_classes)
                               * log_proba.sum(axis=1)[:, np.newaxis])
 
+
+
 #輸入弱分類器預測機率，實際答案，輸出弱分類器錯誤率(自己的方法)
 #error: all,看所有資料計算錯誤率  semi,只看分錯的資料計算錯誤率
 def samze_weight(proba, act_ans, error):
@@ -358,6 +360,44 @@ def samze_weight(proba, act_ans, error):
     return(sum(wrong_prob)/sum(sum_prob))
 
 
+#將每筆資料預測與實際答案對照，輸出每筆資料在預測中錯誤的機率
+def error_prob(proba, act_ans):
+    
+    #print(proba)
+    #print(type(proba))
+    #print(proba.shape)
+    
+    
+    #將預測機率四捨五入
+    proba_temp = []
+
+    for i in proba:
+        #print(i)
+        #print(type(i))
+        sumone= softmax(i)#將數值總和調整為1
+        zun = list(np.around(sumone, 5))#把數值四捨五入以免存不下
+        #print(zun)
+        proba_temp.append(zun)    
+    proba = proba_temp
+    
+    #存下預測答案index
+    predit_ans = []
+    for i in proba:
+        predit_ans.append(i.index(max(i)))   
+    
+    #將預測錯誤資料 wrong_prob/sum_prob
+    wrong_prob = [] #錯的部份的機率和
+    sum_prob = [] #全部機率相加
+    
+    
+    for p, pa, aa in zip(proba, predit_ans, act_ans):
+        sum_prob.append(sum(p))
+        wrong_prob.append(sum(p)-i[aa])
+
+    return  wrong_prob
+
+
+
 #實際答案在預測結果的預測機率
 #proba:弱分類器預測機率
 #act_ans:實際答案
@@ -383,122 +423,7 @@ def act_ans_prob(proba, act_ans):
     
     
 class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
-    """An AdaBoost classifier.
 
-    An AdaBoost [1] classifier is a meta-estimator that begins by fitting a
-    classifier on the original dataset and then fits additional copies of the
-    classifier on the same dataset but where the weights of incorrectly
-    classified instances are adjusted such that subsequent classifiers focus
-    more on difficult cases.
-
-    This class implements the algorithm known as AdaBoost-SAMME [2].
-
-    Read more in the :ref:`User Guide <adaboost>`.
-
-    .. versionadded:: 0.14
-
-    Parameters
-    ----------
-    base_estimator : object, default=None
-        The base estimator from which the boosted ensemble is built.
-        Support for sample weighting is required, as well as proper
-        ``classes_`` and ``n_classes_`` attributes. If ``None``, then
-        the base estimator is :class:`~sklearn.tree.DecisionTreeClassifier`
-        initialized with `max_depth=1`.
-
-    n_estimators : int, default=50
-        The maximum number of estimators at which boosting is terminated.
-        In case of perfect fit, the learning procedure is stopped early.
-
-    learning_rate : float, default=1.
-        Weight applied to each classifier at each boosting iteration. A higher
-        learning rate increases the contribution of each classifier. There is
-        a trade-off between the `learning_rate` and `n_estimators` parameters.
-
-    algorithm : {'SAMME', 'SAMME.R'}, default='SAMME.R'
-        If 'SAMME.R' then use the SAMME.R real boosting algorithm.
-        ``base_estimator`` must support calculation of class probabilities.
-        If 'SAMME' then use the SAMME discrete boosting algorithm.
-        The SAMME.R algorithm typically converges faster than SAMME,
-        achieving a lower test error with fewer boosting iterations.
-
-    random_state : int, RandomState instance or None, default=None
-        Controls the random seed given at each `base_estimator` at each
-        boosting iteration.
-        Thus, it is only used when `base_estimator` exposes a `random_state`.
-        Pass an int for reproducible output across multiple function calls.
-        See :term:`Glossary <random_state>`.
-
-    Attributes
-    ----------
-    base_estimator_ : estimator
-        The base estimator from which the ensemble is grown.
-
-    estimators_ : list of classifiers
-        The collection of fitted sub-estimators.
-
-    classes_ : ndarray of shape (n_classes,)
-        The classes labels.
-
-    n_classes_ : int
-        The number of classes.
-
-    estimator_weights_ : ndarray of floats
-        Weights for each estimator in the boosted ensemble.
-
-    estimator_errors_ : ndarray of floats
-        Classification error for each estimator in the boosted
-        ensemble.
-
-    feature_importances_ : ndarray of shape (n_features,)
-        The impurity-based feature importances if supported by the
-        ``base_estimator`` (when based on decision trees).
-
-        Warning: impurity-based feature importances can be misleading for
-        high cardinality features (many unique values). See
-        :func:`sklearn.inspection.permutation_importance` as an alternative.
-
-    See Also
-    --------
-    AdaBoostRegressor : An AdaBoost regressor that begins by fitting a
-        regressor on the original dataset and then fits additional copies of
-        the regressor on the same dataset but where the weights of instances
-        are adjusted according to the error of the current prediction.
-
-    GradientBoostingClassifier : GB builds an additive model in a forward
-        stage-wise fashion. Regression trees are fit on the negative gradient
-        of the binomial or multinomial deviance loss function. Binary
-        classification is a special case where only a single regression tree is
-        induced.
-
-    sklearn.tree.DecisionTreeClassifier : A non-parametric supervised learning
-        method used for classification.
-        Creates a model that predicts the value of a target variable by
-        learning simple decision rules inferred from the data features.
-
-    References
-    ----------
-    .. [1] Y. Freund, R. Schapire, "A Decision-Theoretic Generalization of
-           on-Line Learning and an Application to Boosting", 1995.
-
-    .. [2] J. Zhu, H. Zou, S. Rosset, T. Hastie, "Multi-class AdaBoost", 2009.
-
-    Examples
-    --------
-    >>> from sklearn.ensemble import AdaBoostClassifier
-    >>> from sklearn.datasets import make_classification
-    >>> X, y = make_classification(n_samples=1000, n_features=4,
-    ...                            n_informative=2, n_redundant=0,
-    ...                            random_state=0, shuffle=False)
-    >>> clf = AdaBoostClassifier(n_estimators=100, random_state=0)
-    >>> clf.fit(X, y)
-    AdaBoostClassifier(n_estimators=100, random_state=0)
-    >>> clf.predict([[0, 0, 0, 0]])
-    array([1])
-    >>> clf.score(X, y)
-    0.983...
-    """
-    @_deprecate_positional_args
     def __init__(self,
                  base_estimator=None, *,
                  n_estimators=50,
@@ -703,31 +628,43 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
         #print('答案維度:', act_ans.shape)
         #print('答案型態:', type(act_ans))
 
-        estimator_error_my = samze_weight(proba, act_ans, error = 'semi')
+        #estimator_error_my_all = samze_weight(proba, act_ans, error = 'all') #不管分對或錯都計算錯誤率
+        #estimator_error_my_semi = samze_weight(proba, act_ans, error = 'semi') #只有分錯的計算錯誤率       
         #print('SAMME改弱分類器錯誤率 : ', estimator_error_my)
         #'''
 
+        #方法一，原方法        
         estimator_error = estimator_error_o
-        #estimator_error = estimator_error_my
         
-        #方法一，相加除二
-        #estimator_error = (estimator_error_o + estimator_error_my) / 2
+        #方法二，自己方法，不管分對或錯都計算錯誤率        
+        #estimator_error = estimator_error_my_all
+
+        #方法三，自己方法，只有分錯的計算錯誤率        
+        #estimator_error = estimator_error_my_semi
         
-        #方法二，相乘開根號
-        #estimator_error = (estimator_error_o * estimator_error_my) ** 0.5
+        #方法四，相加除二(全部)
+        #estimator_error = (estimator_error_o + estimator_error_my_all) / 2
         
-        #方法三，將 各資料的權重*實際答案在弱分類器的預測機率 平均
-        actans_prob = act_ans_prob(proba, act_ans)
+        #方法五，相加除二(只有分錯)
+        #estimator_error = (estimator_error_o + estimator_error_my_semi) / 2        
+        
+        #方法六，相乘開根號(全部)
+        #estimator_error = (estimator_error_o * estimator_error_my_all) ** 0.5
+
+        #方法七，相乘開根號(只有分錯)
+        #estimator_error = (estimator_error_o * estimator_error_my_semi) ** 0.5
+        
+        #方法五，將 各資料的權重*實際答案在弱分類器的預測機率 平均
+        error_probs = error_prob(proba, act_ans)
         #print('實際答案在弱分類器的預測機率 : ', len(actans_prob))
-        estimator_error = np.mean(np.average(actans_prob, weights=sample_weight, axis=0)) - 0.5
-        #estimator_error = np.mean(np.average(sample_weight, weights=actans_prob, axis=0))
+        estimator_error = np.mean(np.average(error_probs, weights=sample_weight, axis=0))
         #print('SAMME弱分類器錯誤率 : ', estimator_error)
 
         
         if(estimator_error == 0.5):
-            estimator_error = 0.5000000000000000000001
+            estimator_error = 0.50000000000001
         elif(estimator_error == 1.0):
-            estimator_error = 0.9999999999999999999999
+            estimator_error = 0.99999999999999
         print('弱分類器錯誤率:', estimator_error)
 
 #---------------------------------------------------------------------------------------------------------  
@@ -1024,128 +961,19 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
 
 #Adaboost加入特徵選擇
 class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
-    """An AdaBoost classifier.
 
-    An AdaBoost [1] classifier is a meta-estimator that begins by fitting a
-    classifier on the original dataset and then fits additional copies of the
-    classifier on the same dataset but where the weights of incorrectly
-    classified instances are adjusted such that subsequent classifiers focus
-    more on difficult cases.
-
-    This class implements the algorithm known as AdaBoost-SAMME [2].
-
-    Read more in the :ref:`User Guide <adaboost>`.
-
-    .. versionadded:: 0.14
-
-    Parameters
-    ----------
-    base_estimator : object, default=None
-        The base estimator from which the boosted ensemble is built.
-        Support for sample weighting is required, as well as proper
-        ``classes_`` and ``n_classes_`` attributes. If ``None``, then
-        the base estimator is :class:`~sklearn.tree.DecisionTreeClassifier`
-        initialized with `max_depth=1`.
-
-    n_estimators : int, default=50
-        The maximum number of estimators at which boosting is terminated.
-        In case of perfect fit, the learning procedure is stopped early.
-
-    learning_rate : float, default=1.
-        Weight applied to each classifier at each boosting iteration. A higher
-        learning rate increases the contribution of each classifier. There is
-        a trade-off between the `learning_rate` and `n_estimators` parameters.
-
-    algorithm : {'SAMME', 'SAMME.R'}, default='SAMME.R'
-        If 'SAMME.R' then use the SAMME.R real boosting algorithm.
-        ``base_estimator`` must support calculation of class probabilities.
-        If 'SAMME' then use the SAMME discrete boosting algorithm.
-        The SAMME.R algorithm typically converges faster than SAMME,
-        achieving a lower test error with fewer boosting iterations.
-
-    random_state : int, RandomState instance or None, default=None
-        Controls the random seed given at each `base_estimator` at each
-        boosting iteration.
-        Thus, it is only used when `base_estimator` exposes a `random_state`.
-        Pass an int for reproducible output across multiple function calls.
-        See :term:`Glossary <random_state>`.
-
-    Attributes
-    ----------
-    base_estimator_ : estimator
-        The base estimator from which the ensemble is grown.
-
-    estimators_ : list of classifiers
-        The collection of fitted sub-estimators.
-
-    classes_ : ndarray of shape (n_classes,)
-        The classes labels.
-
-    n_classes_ : int
-        The number of classes.
-
-    estimator_weights_ : ndarray of floats
-        Weights for each estimator in the boosted ensemble.
-
-    estimator_errors_ : ndarray of floats
-        Classification error for each estimator in the boosted
-        ensemble.
-
-    feature_importances_ : ndarray of shape (n_features,)
-        The impurity-based feature importances if supported by the
-        ``base_estimator`` (when based on decision trees).
-
-        Warning: impurity-based feature importances can be misleading for
-        high cardinality features (many unique values). See
-        :func:`sklearn.inspection.permutation_importance` as an alternative.
-
-    See Also
-    --------
-    AdaBoostRegressor : An AdaBoost regressor that begins by fitting a
-        regressor on the original dataset and then fits additional copies of
-        the regressor on the same dataset but where the weights of instances
-        are adjusted according to the error of the current prediction.
-
-    GradientBoostingClassifier : GB builds an additive model in a forward
-        stage-wise fashion. Regression trees are fit on the negative gradient
-        of the binomial or multinomial deviance loss function. Binary
-        classification is a special case where only a single regression tree is
-        induced.
-
-    sklearn.tree.DecisionTreeClassifier : A non-parametric supervised learning
-        method used for classification.
-        Creates a model that predicts the value of a target variable by
-        learning simple decision rules inferred from the data features.
-
-    References
-    ----------
-    .. [1] Y. Freund, R. Schapire, "A Decision-Theoretic Generalization of
-           on-Line Learning and an Application to Boosting", 1995.
-
-    .. [2] J. Zhu, H. Zou, S. Rosset, T. Hastie, "Multi-class AdaBoost", 2009.
-
-    Examples
-    --------
-    >>> from sklearn.ensemble import AdaBoostClassifier
-    >>> from sklearn.datasets import make_classification
-    >>> X, y = make_classification(n_samples=1000, n_features=4,
-    ...                            n_informative=2, n_redundant=0,
-    ...                            random_state=0, shuffle=False)
-    >>> clf = AdaBoostClassifier(n_estimators=100, random_state=0)
-    >>> clf.fit(X, y)
-    AdaBoostClassifier(n_estimators=100, random_state=0)
-    >>> clf.predict([[0, 0, 0, 0]])
-    array([1])
-    >>> clf.score(X, y)
-    0.983...
-    """
-    @_deprecate_positional_args
     def __init__(self,
                  base_estimator=None, *,
                  n_estimators=50,
                  learning_rate=1.,
                  algorithm='SAMME.R',
-                 random_state=None):
+                 random_state=None,
+                 
+                 #我自己加的參數
+                 fs_enable=True,
+                 estimator_error_calc=0,
+
+                 ):
 
         super().__init__(
             base_estimator=base_estimator,
@@ -1154,28 +982,12 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             random_state=random_state)
 
         self.algorithm = algorithm
+        
+        self.fs_enable = fs_enable
+        self.estimator_error_calc = estimator_error_calc
 
     def fit(self, X, y, sample_weight=None):
-        """Build a boosted classifier from the training set (X, y).
 
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples. Sparse matrix can be CSC, CSR, COO,
-            DOK, or LIL. COO, DOK, and LIL are converted to CSR.
-
-        y : array-like of shape (n_samples,)
-            The target values (class labels).
-
-        sample_weight : array-like of shape (n_samples,), default=None
-            Sample weights. If None, the sample weights are initialized to
-            ``1 / n_samples``.
-
-        Returns
-        -------
-        self : object
-            Fitted estimator.
-        """
         # Check that algorithm is supported
         if self.algorithm not in ('SAMME', 'SAMME.R'):
             raise ValueError("algorithm %s is not supported" % self.algorithm)
@@ -1202,44 +1014,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                              % self.base_estimator_.__class__.__name__)
 
     def _boost(self, iboost, X, y, sample_weight, random_state):
-        """Implement a single boost.
 
-        Perform a single boost according to the real multi-class SAMME.R
-        algorithm or to the discrete SAMME algorithm and return the updated
-        sample weights.
-
-        Parameters
-        ----------
-        iboost : int
-            The index of the current boost iteration.
-
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples.
-
-        y : array-like of shape (n_samples,)
-            The target values (class labels).
-
-        sample_weight : array-like of shape (n_samples,)
-            The current sample weights.
-
-        random_state : RandomState instance
-            The RandomState instance used if the base estimator accepts a
-            `random_state` attribute.
-
-        Returns
-        -------
-        sample_weight : array-like of shape (n_samples,) or None
-            The reweighted sample weights.
-            If None then boosting has terminated early.
-
-        estimator_weight : float
-            The weight for the current boost.
-            If None then boosting has terminated early.
-
-        estimator_error : float
-            The classification error for the current boost.
-            If None then boosting has terminated early.
-        """
         if self.algorithm == 'SAMME.R':
             return self._boost_real(iboost, X, y, sample_weight, random_state)
 
@@ -1250,6 +1025,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
     def _boost_real(self, iboost, X, y, sample_weight, random_state):
 
 #-------------------------------------------------------------------------------
+        
         """轉dataframe再處理"""
         yo = y #抄一份原來的y
         
@@ -1278,56 +1054,60 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
 
         """自己做特徵選擇"""
+        if(self.fs_enable == True):
+            #X = pd.DataFrame(X)
+            #print(X[:10])
+            
+            #95%信心水準挑選
+            pipe_fs = Pipeline(
+                   [
+                     ('filter', feature_selection(method = 'anova_kf', p_threshold = 0.05))
+                   ])
 
-        #X = pd.DataFrame(X)
-        #print(X[:10])
-        
-        #95%信心水準挑選
-        pipe_fs = Pipeline(
-               [
-                 ('filter', feature_selection(method = 'anova_kf', p_threshold = 0.05))
-               ])
+            X1 = pipe_fs.fit_transform(X, y)
+         
+            #50%信心水準挑選
+            pipe_fs = Pipeline(
+                   [
+                     ('filter', feature_selection(method = 'anova_kf', p_threshold = 0.5))
+                   ])
 
-        X1 = pipe_fs.fit_transform(X, y)
-     
-        #50%信心水準挑選
-        pipe_fs = Pipeline(
-               [
-                 ('filter', feature_selection(method = 'anova_kf', p_threshold = 0.5))
-               ])
+            X2 = pipe_fs.fit_transform(X, y)        
+            
+            #不挑
+            X3 = X
+            
+            #條件判斷
+            if(len(X1.columns)!=0): #95%有特
+                X = X1
+                print('X1')
 
-        X2 = pipe_fs.fit_transform(X, y)        
-        
-        #不挑
-        X3 = X
-        
-        #條件判斷
-        if(len(X1.columns)!=0): #95%有特
-            X = X1
-            print('X1')
+            elif(len(X1.columns)==0):#95%沒特，看50%有無
 
-        elif(len(X1.columns)==0):#95%沒特，看50%有無
+                if(len(X2.columns)!=0): #50%有特
+                    X = X2
+                    print('X2')
+                    
+                elif(len(X2.columns)==0):
+                    X = X3
+                    print('X3')
 
-            if(len(X2.columns)!=0): #50%有特
-                X = X2
-                print('X2')
-                
-            elif(len(X2.columns)==0):
-                X = X3
-                print('X3')
+            print('弱分類器輸入資料維度 : ', len(X.columns))           
 
-        print('弱分類器輸入資料維度 : ', len(X.columns))           
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+            
+            X = X.to_numpy()
+            y = y.to_numpy()
 
-        self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
-        XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
-        
-        X = X.to_numpy()
-        y = y.to_numpy()
+            
+            #print(y)
+            #print("-----------------------")
+            #print(yo)
 
-        
-        #print(y)
-        #print("-----------------------")
-        #print(yo)
+        else:
+            X = X.to_numpy()
+            y = y.to_numpy()            
 #-------------------------------------------------------------------------------
 
         """Implement a single boost using the SAMME.R real algorithm."""
@@ -1368,7 +1148,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         # Stop if the error is at least as bad as random guessing
         #如果弱分類器太爛就停
         n_classes = self.n_classes_
-        
+        '''
         if estimator_error >= 1. - (1. / n_classes):
             self.estimators_.pop(-1)
             if len(self.estimators_) == 0:
@@ -1376,7 +1156,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                                  'ensemble is worse than random, ensemble '
                                  'can not be fit.')
             return None, None, None
-
+        '''
         # Boost weight using multi-class AdaBoost SAMME alg
         #SAMME弱分類器權重
         samme_estimator_weight = self.learning_rate * (
@@ -1452,56 +1232,63 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         #目標屬性
         y = df_merge[y_name]
 
+        """自己做特徵選擇"""
+        if(self.fs_enable == True):
 
-        #X = pd.DataFrame(X)
-        #print(X[:10])
+            #X = pd.DataFrame(X)
+            #print(X[:10])
+            
+            #95%信心水準挑選
+            pipe_fs = Pipeline(
+                   [
+                     ('filter', feature_selection(method = 'anova_kf', p_threshold = 0.05))
+                   ])
+
+            X1 = pipe_fs.fit_transform(X, y)
+         
+            #50%信心水準挑選
+            pipe_fs = Pipeline(
+                   [
+                     ('filter', feature_selection(method = 'anova_kf', p_threshold = 0.5))
+                   ])
+
+            X2 = pipe_fs.fit_transform(X, y)        
+            
+            #不挑
+            X3 = X
+            
+            #條件判斷
+            if(len(X1.columns)!=0): #95%有特
+                X = X1
+                print('X1')
+
+            elif(len(X1.columns)==0):#95%沒特，看50%有無
+
+                if(len(X2.columns)!=0): #50%有特
+                    X = X2
+                    print('X2')
+                    
+                elif(len(X2.columns)==0):
+                    X = X3
+                    print('X3')
+
+            print('弱分類器輸入資料維度 : ', len(X.columns))           
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+            
+            X = X.to_numpy()
+            y = y.to_numpy()
+
+            
+            #print(y)
+            #print("-----------------------")
+            #print(yo)
         
-        #95%信心水準挑選
-        pipe_fs = Pipeline(
-               [
-                 ('filter', feature_selection(method = 'anova_kf', p_threshold = 0.05))
-               ])
-
-        X1 = pipe_fs.fit_transform(X, y)
-     
-        #50%信心水準挑選
-        pipe_fs = Pipeline(
-               [
-                 ('filter', feature_selection(method = 'anova_kf', p_threshold = 0.5))
-               ])
-
-        X2 = pipe_fs.fit_transform(X, y)        
-        
-        #不挑
-        X3 = X
-        
-        #條件判斷
-        if(len(X1.columns)!=0): #95%有特
-            X = X1
-            print('X1')
-
-        elif(len(X1.columns)==0):#95%沒特，看50%有無
-
-            if(len(X2.columns)!=0): #50%有特
-                X = X2
-                print('X2')
-                
-            elif(len(X2.columns)==0):
-                X = X3
-                print('X3')
-
-        print('弱分類器輸入資料維度 : ', len(X.columns))           
-
-        self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
-        XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
-        
-        X = X.to_numpy()
-        y = y.to_numpy()
-
-        
-        #print(y)
-        #print("-----------------------")
-        #print(yo)
+        else:
+            self.estimators_features_ = X.columns
+            X = X.to_numpy()
+            y = y.to_numpy()  
 #-------------------------------------------------------------------------------    
     
     
@@ -1525,18 +1312,87 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         #incorrect = y_predict != y
         incorrect = y_predict != yo
         
-        # Error fraction
-        estimator_error = np.mean(
+#---------------------------------------------------------------------------------------------------------        
+        # Error fraction(SAMME弱分類器錯誤率)
+        #'''
+        #原方法
+        estimator_error_o = np.mean(
             np.average(incorrect, weights=sample_weight, axis=0))
-        print('SAMME弱分類器錯誤率:', estimator_error)
+        #print('SAMME弱分類器錯誤率 : ', estimator_error_o)
+        #'''
+        
+        #'''
+        #我的方法
+        n_classes = self.n_classes_        
+        proba = _samme_proba(estimator, n_classes, X)
+        #print('SAMME弱分類器預測機率:', proba)
+        
+        act_ans = list(y)
 
-        # Stop if classification is perfect
-        if estimator_error <= 0:
-            return sample_weight, 1., 0.
+        #print('轉list:', list(act_ans))
+        #print('實際答案:', act_ans)
+        #print('答案維度:', act_ans.shape)
+        #print('答案型態:', type(act_ans))
 
-        n_classes = self.n_classes_
+        
+               
+        #print('SAMME改弱分類器錯誤率 : ', estimator_error_my)
+        #'''
+
+        #方法零，原方法
+        if(self.estimator_error_calc == 0):
+            estimator_error = estimator_error_o
+        
+        #方法一，自己方法，不管分對或錯都計算錯誤率
+        elif(self.estimator_error_calc == 1):
+            estimator_error_my_all = samze_weight(proba, act_ans, error = 'all') #不管分對或錯都計算錯誤率
+            estimator_error = estimator_error_my_all
+
+        #方法二，自己方法，只有分錯的計算錯誤率
+        elif(self.estimator_error_calc == 2): 
+            estimator_error_my_semi = samze_weight(proba, act_ans, error = 'semi') #只有分錯的計算錯誤率
+            estimator_error = estimator_error_my_semi
+        
+        #方法三，相加除二(全部)
+        elif(self.estimator_error_calc == 3):
+            estimator_error_my_all = samze_weight(proba, act_ans, error = 'all') #不管分對或錯都計算錯誤率
+            estimator_error = (estimator_error_o + estimator_error_my_all) / 2
+        
+        #方法四，相加除二(只有分錯)
+        elif(self.estimator_error_calc == 4):
+            estimator_error_my_semi = samze_weight(proba, act_ans, error = 'semi') #只有分錯的計算錯誤率
+            estimator_error = (estimator_error_o + estimator_error_my_semi) / 2        
+        
+        #方法五，相乘開根號(全部)
+        elif(self.estimator_error_calc == 5):
+            estimator_error_my_all = samze_weight(proba, act_ans, error = 'all') #不管分對或錯都計算錯誤率
+            estimator_error = (estimator_error_o * estimator_error_my_all) ** 0.5
+
+        #方法六，相乘開根號(只有分錯)
+        elif(self.estimator_error_calc == 6):
+            estimator_error_my_semi = samze_weight(proba, act_ans, error = 'semi') #只有分錯的計算錯誤率
+            estimator_error = (estimator_error_o * estimator_error_my_semi) ** 0.5
+        
+        #方法七，將 各資料的權重*實際答案在弱分類器的預測機率 平均
+        elif(self.estimator_error_calc == 7):          
+            error_probs = error_prob(proba, act_ans)
+            #print('實際答案在弱分類器的預測機率 : ', len(actans_prob))
+            estimator_error = np.mean(np.average(error_probs, weights=sample_weight, axis=0))
+            #print('SAMME弱分類器錯誤率 : ', estimator_error)
+        else:
+            estimator_error = estimator_error_o
+        
+        if(estimator_error == 0.5):
+            estimator_error = 0.50000000000001
+        elif(estimator_error == 1.0):
+            estimator_error = 0.99999999999999
+        print('弱分類器錯誤率:', estimator_error)
+
+#---------------------------------------------------------------------------------------------------------  
+
 
         # Stop if the error is at least as bad as random guessing
+        '''
         if estimator_error >= 1. - (1. / n_classes):
             self.estimators_.pop(-1)
             if len(self.estimators_) == 0:
@@ -1544,6 +1400,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                                  'ensemble is worse than random, ensemble '
                                  'can not be fit.')
             return None, None, None
+        '''
 
         # Boost weight using multi-class AdaBoost SAMME alg
         #SAMME弱分類器權重
@@ -1561,22 +1418,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         return sample_weight, estimator_weight, estimator_error
 
     def predict(self, X):
-        """Predict classes for X.
 
-        The predicted class of an input sample is computed as the weighted mean
-        prediction of the classifiers in the ensemble.
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples. Sparse matrix can be CSC, CSR, COO,
-            DOK, or LIL. COO, DOK, and LIL are converted to CSR.
-
-        Returns
-        -------
-        y : ndarray of shape (n_samples,)
-            The predicted classes.
-        """
         X = self._check_X(X)
 
         pred = self.decision_function(X)
@@ -1587,26 +1429,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         return self.classes_.take(np.argmax(pred, axis=1), axis=0)
 
     def staged_predict(self, X):
-        """Return staged predictions for X.
 
-        The predicted class of an input sample is computed as the weighted mean
-        prediction of the classifiers in the ensemble.
-
-        This generator method yields the ensemble prediction after each
-        iteration of boosting and therefore allows monitoring, such as to
-        determine the prediction on a test set after each boost.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            The input samples. Sparse matrix can be CSC, CSR, COO,
-            DOK, or LIL. COO, DOK, and LIL are converted to CSR.
-
-        Yields
-        ------
-        y : generator of ndarray of shape (n_samples,)
-            The predicted classes.
-        """
         X = self._check_X(X)
 
         n_classes = self.n_classes_
@@ -1634,24 +1457,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         #print(self.estimators_)
         #print('estimator_weights_ : ', len(self.estimator_weights_))
         #print(self.estimator_weights_)
-        """Compute the decision function of ``X``.
 
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples. Sparse matrix can be CSC, CSR, COO,
-            DOK, or LIL. COO, DOK, and LIL are converted to CSR.
-
-        Returns
-        -------
-        score : ndarray of shape of (n_samples, k)
-            The decision function of the input samples. The order of
-            outputs is the same of that of the :term:`classes_` attribute.
-            Binary classification is a special cases with ``k == 1``,
-            otherwise ``k==n_classes``. For binary classification,
-            values closer to -1 or 1 mean more like the first or second
-            class in ``classes_``, respectively.
-        """
         check_is_fitted(self)
         X = self._check_X(X)
 
@@ -1691,38 +1497,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         #print(type(pred))
         #print(len(pred))        
 #-------------------------------------------------------------------------------
-        '''
-        #print(len(self.estimators_))
-        #print(len(self.estimators_features_))
-        
-        #自己改的1
-        X = pd.DataFrame(X)#要改成dataframe才可以挑屬性
-        pred = []
-        if self.algorithm == 'SAMME.R':
-            # The weights are all 1. for SAMME.R
-            for estimator, f in zip(self.estimators_, self.estimators_features_):
-                #print(list(f))
-                #print(X[list(f)])
-                #print(type(X))
-                #print(X[list(f)].shape[1])
-                #print(sum(_samme_proba(estimator, n_classes, X[list(f)])))
-                pred.append(sum(_samme_proba(estimator, n_classes, X[list(f)])))
-
-        else:  # self.algorithm == "SAMME"
-            for estimator, w, f in zip(self.estimators_, self.estimator_weights_, self.estimators_features_):
-                #print(X[list(f)].shape[1])
-                pred.append(sum((estimator.predict(X[list(f)]) == classes).T * w))    
-        
-        X = X.to_numpy()#做完再改回ndarray
-        pred = np.array(pred)
-        
-        #print(X.shape)
-        #print(type(X))
-        #print(X)
-        #print(pred)
-        #print(type(pred))
-        '''
-#-------------------------------------------------------------------------------                                                
+                                               
 
         pred /= self.estimator_weights_.sum()
         if n_classes == 2:
@@ -1732,27 +1507,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
 #------------------------------------------------------------------------------- 
     def staged_decision_function(self, X):
-        """Compute decision function of ``X`` for each boosting iteration.
 
-        This method allows monitoring (i.e. determine error on testing set)
-        after each boosting iteration.
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples. Sparse matrix can be CSC, CSR, COO,
-            DOK, or LIL. COO, DOK, and LIL are converted to CSR.
-
-        Yields
-        ------
-        score : generator of ndarray of shape (n_samples, k)
-            The decision function of the input samples. The order of
-            outputs is the same of that of the :term:`classes_` attribute.
-            Binary classification is a special cases with ``k == 1``,
-            otherwise ``k==n_classes``. For binary classification,
-            values closer to -1 or 1 mean more like the first or second
-            class in ``classes_``, respectively.
-        """
         check_is_fitted(self)
         X = self._check_X(X)
 
@@ -1786,17 +1541,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
     @staticmethod
     def _compute_proba_from_decision(decision, n_classes):
-        """Compute probabilities from the decision function.
 
-        This is based eq. (4) of [1] where:
-            p(y=c|X) = exp((1 / K-1) f_c(X)) / sum_k(exp((1 / K-1) f_k(X)))
-                     = softmax((1 / K-1) * f(X))
-
-        References
-        ----------
-        .. [1] J. Zhu, H. Zou, S. Rosset, T. Hastie, "Multi-class AdaBoost",
-               2009.
-        """
         if n_classes == 2:
             decision = np.vstack([-decision, decision]).T / 2
         else:
@@ -1804,24 +1549,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         return softmax(decision, copy=False)
 
     def predict_proba(self, X):
-        """Predict class probabilities for X.
 
-        The predicted class probabilities of an input sample is computed as
-        the weighted mean predicted class probabilities of the classifiers
-        in the ensemble.
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples. Sparse matrix can be CSC, CSR, COO,
-            DOK, or LIL. COO, DOK, and LIL are converted to CSR.
-
-        Returns
-        -------
-        p : ndarray of shape (n_samples, n_classes)
-            The class probabilities of the input samples. The order of
-            outputs is the same of that of the :term:`classes_` attribute.
-        """
         check_is_fitted(self)
         X = self._check_X(X)
 
@@ -1834,29 +1562,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         return self._compute_proba_from_decision(decision, n_classes)
 
     def staged_predict_proba(self, X):
-        """Predict class probabilities for X.
 
-        The predicted class probabilities of an input sample is computed as
-        the weighted mean predicted class probabilities of the classifiers
-        in the ensemble.
-
-        This generator method yields the ensemble predicted class probabilities
-        after each iteration of boosting and therefore allows monitoring, such
-        as to determine the predicted class probabilities on a test set after
-        each boost.
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples. Sparse matrix can be CSC, CSR, COO,
-            DOK, or LIL. COO, DOK, and LIL are converted to CSR.
-
-        Yields
-        -------
-        p : generator of ndarray of shape (n_samples,)
-            The class probabilities of the input samples. The order of
-            outputs is the same of that of the :term:`classes_` attribute.
-        """
         X = self._check_X(X)
 
         n_classes = self.n_classes_
@@ -1865,24 +1571,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             yield self._compute_proba_from_decision(decision, n_classes)
 
     def predict_log_proba(self, X):
-        """Predict class log-probabilities for X.
 
-        The predicted class log-probabilities of an input sample is computed as
-        the weighted mean predicted class log-probabilities of the classifiers
-        in the ensemble.
-
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} of shape (n_samples, n_features)
-            The training input samples. Sparse matrix can be CSC, CSR, COO,
-            DOK, or LIL. COO, DOK, and LIL are converted to CSR.
-
-        Returns
-        -------
-        p : ndarray of shape (n_samples, n_classes)
-            The class probabilities of the input samples. The order of
-            outputs is the same of that of the :term:`classes_` attribute.
-        """
         X = self._check_X(X)
         return np.log(self.predict_proba(X))
         
