@@ -396,7 +396,22 @@ def act_ans_prob(proba, act_ans):
         actans_prob.append(p[aa])
     
     return actans_prob
+
+#輸入決策樹模型，輸出屬性重要性排序（index）
+#參數：決策數模型，想要前幾%重要的屬性
+def importance_to_index(clf, prob):
+    importances = list(clf.feature_importances_)
+    s = importances
+    s2 = sorted(range(len(s)), key=lambda k: s[k], reverse=True)
+    return s2[:int(len(s2)*prob)]
+
+#將屬性index編號轉換為屬性名字
+def index_to_colname(indexs, oridata):
+    colname = []
+    for i in indexs:
+        colname.append(list(x_.columns)[i])
     
+    return(colname)
     
 class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
 
@@ -946,7 +961,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                  random_state=None,
                  
                  #我自己加的參數
-                 fs_enable=True,
+                 fs_enable='anova_kf',
                  estimator_error_calc=0,
 
                  ):
@@ -1030,7 +1045,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
 
         """自己做特徵選擇"""
-        if(self.fs_enable == True):
+        if(self.fs_enable == 'anova_kf'):
             #X = pd.DataFrame(X)
             #print(X[:10])
             
@@ -1080,6 +1095,19 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             #print(y)
             #print("-----------------------")
             #print(yo)
+
+        elif(self.fs_enable == 'gini'):
+
+            clf = DecisionTreeClassifier(criterion=self.fs_enable, random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.5)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+
+
+
 
         else:
             X = X.to_numpy()
