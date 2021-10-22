@@ -1,28 +1,3 @@
-"""Weight Boosting.
-
-This module contains weight boosting estimators for both classification and
-regression.
-
-The module structure is the following:
-
-- The `BaseWeightBoosting` base class implements a common ``fit`` method
-  for all the estimators in the module. Regression and classification
-  only differ from each other in the loss function that is optimized.
-
-- :class:`~sklearn.ensemble.AdaBoostClassifier` implements adaptive boosting
-  (AdaBoost-SAMME) for classification problems.
-
-- :class:`~sklearn.ensemble.AdaBoostRegressor` implements adaptive boosting
-  (AdaBoost.R2) for regression problems.
-"""
-
-# Authors: Noel Dawe <noel@dawe.me>
-#          Gilles Louppe <g.louppe@gmail.com>
-#          Hamzeh Alsalhi <ha258@cornell.edu>
-#          Arnaud Joly <arnaud.v.joly@gmail.com>
-#
-# License: BSD 3 clause
-
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
@@ -44,6 +19,7 @@ from ..utils.validation import _num_samples
 from ..utils.validation import _deprecate_positional_args
 
 #123test
+#2021/10/22 push test
 #----------------------------------------------------------------
 """自己import的東西"""
 
