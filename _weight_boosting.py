@@ -1088,6 +1088,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
             
+            #print(X)
             X = X.to_numpy()
             y = y.to_numpy()
 
@@ -1100,18 +1101,42 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = DecisionTreeClassifier(criterion=self.fs_enable, random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.5)
+            importance = importance_to_index(clf, 0.2)
 
             X = X[importance]
 
             print('重要屬性index:', importance)
+            #print(X)
 
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
 
+            X = X.to_numpy()
+            y = y.to_numpy() 
 
+        elif(self.fs_enable == 'entropy'):
+
+            clf = DecisionTreeClassifier(criterion=self.fs_enable, random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.2)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+            #print(X)
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
+            X = X.to_numpy()
+            y = y.to_numpy() 
 
         else:
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+            
             X = X.to_numpy()
-            y = y.to_numpy()            
+            y = y.to_numpy()           
 #-------------------------------------------------------------------------------
 
         """Implement a single boost using the SAMME.R real algorithm."""
@@ -1237,7 +1262,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         y = df_merge[y_name]
 
         """自己做特徵選擇"""
-        if(self.fs_enable == True):
+        if(self.fs_enable == 'anova_kf'):
 
             #X = pd.DataFrame(X)
             #print(X[:10])
@@ -1289,8 +1314,46 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             #print("-----------------------")
             #print(yo)
         
+
+        elif(self.fs_enable == 'gini'):
+
+            clf = DecisionTreeClassifier(criterion=self.fs_enable, random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.2)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+            #print(X)
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
+            X = X.to_numpy()
+            y = y.to_numpy() 
+
+        elif(self.fs_enable == 'entropy'):
+
+            clf = DecisionTreeClassifier(criterion=self.fs_enable, random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.2)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+            #print(X)
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
+            X = X.to_numpy()
+            y = y.to_numpy()         
+
+
         else:
-            self.estimators_features_ = X.columns
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
             X = X.to_numpy()
             y = y.to_numpy()  
 #-------------------------------------------------------------------------------    
@@ -1377,12 +1440,21 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             estimator_error_my_semi = samze_weight(proba, act_ans, error = 'semi') #只有分錯的計算錯誤率
             estimator_error = (estimator_error_o * estimator_error_my_semi) ** 0.5
         
-        #方法七，將 各資料的權重*實際答案在弱分類器的預測機率 平均
+        #方法七，將 各資料的權重*實際答案在弱分類器的預測機率（看全部資料） 平均
         elif(self.estimator_error_calc == 7):          
             error_probs = error_prob(proba, act_ans)
             #print('實際答案在弱分類器的預測機率 : ', len(actans_prob))
             estimator_error = np.mean(np.average(error_probs, weights=sample_weight, axis=0))
             #print('SAMME弱分類器錯誤率 : ', estimator_error)
+
+        #方法八，將 各資料的權重*實際答案在弱分類器的預測機率（看分錯資料） 平均
+        elif(self.estimator_error_calc == 8):          
+            error_probs = error_prob(proba, act_ans)
+            #print('實際答案在弱分類器的預測機率 : ', len(actans_prob))
+            incorrect_error_probs = error_probs * incorrect
+            estimator_error = np.mean(np.average(incorrect_error_probs, weights=sample_weight, axis=0))
+            #print('SAMME弱分類器錯誤率 : ', estimator_error)
+
         else:
             estimator_error = estimator_error_o
         
