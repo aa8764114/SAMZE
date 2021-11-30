@@ -18,8 +18,7 @@ from ..utils.validation import has_fit_parameter
 from ..utils.validation import _num_samples
 from ..utils.validation import _deprecate_positional_args
 
-#123test
-#2021/10/22 push test
+
 #----------------------------------------------------------------
 """自己import的東西"""
 
@@ -28,6 +27,8 @@ from .data_preprocessing_pipeline import *
 from .feature_engineering import *
 from sklearn.pipeline import Pipeline
 from scipy.special import softmax
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 
 
 #----------------------------------------------------------------
@@ -116,6 +117,9 @@ class BaseWeightBoosting(BaseEnsemble, metaclass=ABCMeta):
         
         #建模前挑選的特徵
         self.estimators_features_ = []
+
+        #若分類器的錯誤率
+        self.yowai_estimator_error = 0
         
 
         # Initializion of the random number instance that will be used to
@@ -147,15 +151,14 @@ class BaseWeightBoosting(BaseEnsemble, metaclass=ABCMeta):
             # Stop if the sum of sample weights has become non-positive
             if sample_weight_sum <= 0:
                 break
-            '''
-            #如果挑不到特徵就停
-            #print('挑到的特徵數:', len(self.estimators_features_))
-            X_temp = pd.DataFrame(X)            
-            #print('輸入資料欄位數量:', len(X_temp.columns))
-            # 如果挑不到特徵就停
-            if len(self.estimators_features_) <= len(X_temp.columns):
+
+            #如果若分類器權重大於亂猜
+            print('抄出來的若分類器錯誤率：', self.yowai_estimator_error, '資料有幾類：',  len(self.classes_))
+            print('亂猜的錯誤率：', (1. / len(self.classes_)))
+            if self.yowai_estimator_error >= 1. - (1. / len(self.classes_)):
                 break
-            '''
+
+
             if iboost < self.n_estimators - 1:
                 # Normalize
                 sample_weight /= sample_weight_sum
@@ -1043,7 +1046,6 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         #目標屬性
         y = df_merge[y_name]
 
-
         """自己做特徵選擇"""
         if(self.fs_enable == 'anova_kf'):
             #X = pd.DataFrame(X)
@@ -1131,6 +1133,85 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             X = X.to_numpy()
             y = y.to_numpy() 
 
+        elif(self.fs_enable == 'rf_gini'):
+
+            clf = RandomForestClassifier(n_estimators=100, criterion='gini', random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.2)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+            #print(X)
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
+            X = X.to_numpy()
+            y = y.to_numpy() 
+
+        elif(self.fs_enable == 'rf_entropy'):
+
+            clf = RandomForestClassifier(n_estimators=100, criterion='entropy', random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.2)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+            #print(X)
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
+            X = X.to_numpy()
+            y = y.to_numpy()        
+
+        elif(self.fs_enable == 'xgb'):
+
+            clf = XGBClassifier(n_estimators=100, random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.2)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+            #print(X)
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
+            X = X.to_numpy()
+            y = y.to_numpy()    
+
+        elif(self.fs_enable == 'var'):
+            pipe_fs = Pipeline(
+                   [
+                     ('filter', feature_selection(method = 'var'))
+                   ])
+            X = pipe_fs.fit_transform(X, y)        
+            print('弱分類器輸入資料維度 : ', len(X.columns))           
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+            
+            X = X.to_numpy()
+            y = y.to_numpy()
+
+        elif(self.fs_enable == 'corr'):
+            pipe_fs = Pipeline(
+                   [
+                     ('filter', feature_selection(method = 'corr'))
+                   ])
+            X = pipe_fs.fit_transform(X, y)        
+            print('弱分類器輸入資料維度 : ', len(X.columns))           
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+            
+            X = X.to_numpy()
+            y = y.to_numpy()
+
         else:
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1168,9 +1249,9 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             np.average(incorrect, weights=sample_weight, axis=0))
         print("SAMME.R弱分類器錯誤率:", estimator_error)
 
-        # Stop if classification is perfect
-        if estimator_error <= 0:
-            return sample_weight, 1., 0.
+        # Stop if classification is perfect(分類器太好的話就停)
+        # if estimator_error <= 0:
+        #     return sample_weight, 1., 0.
 
 #------------------------------------------------------------------------------            
         #自己加入的
@@ -1187,10 +1268,11 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             return None, None, None
         '''
         # Boost weight using multi-class AdaBoost SAMME alg
-        #SAMME弱分類器權重
+        #用SAMME的方法計算SAMME.R的弱分類器權重
         samme_estimator_weight = self.learning_rate * (
             np.log((1. - estimator_error) / estimator_error) +
             np.log(n_classes - 1.))
+        self.yowai_estimator_error = estimator_error
         print("SAMME.R弱分類器權重:", samme_estimator_weight)
 #------------------------------------------------------------------------------  
         # Construct y coding as described in Zhu et al [2]:
@@ -1228,7 +1310,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                                      (estimator_weight < 0)))
 
         #原來的回傳值
-        #return sample_weight, 1., estimator_error
+        # return sample_weight, 1., estimator_error
         #把自己做的弱分類器權重回傳
         return sample_weight, samme_estimator_weight, estimator_error
         
@@ -1317,7 +1399,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
         elif(self.fs_enable == 'gini'):
 
-            clf = DecisionTreeClassifier(criterion=self.fs_enable, random_state=0)
+            clf = DecisionTreeClassifier(criterion='gini', random_state=0)
             clf.fit(X, y)
             importance = importance_to_index(clf, 0.2)
 
@@ -1334,7 +1416,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
         elif(self.fs_enable == 'entropy'):
 
-            clf = DecisionTreeClassifier(criterion=self.fs_enable, random_state=0)
+            clf = DecisionTreeClassifier(criterion='entropy', random_state=0)
             clf.fit(X, y)
             importance = importance_to_index(clf, 0.2)
 
@@ -1349,7 +1431,85 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             X = X.to_numpy()
             y = y.to_numpy()         
 
+        elif(self.fs_enable == 'rf_gini'):
 
+            clf = RandomForestClassifier(n_estimators=100, criterion='gini', random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.2)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+            #print(X)
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
+            X = X.to_numpy()
+            y = y.to_numpy() 
+
+        elif(self.fs_enable == 'rf_entropy'):
+
+            clf = RandomForestClassifier(n_estimators=100, criterion='entropy', random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.2)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+            #print(X)
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
+            X = X.to_numpy()
+            y = y.to_numpy()        
+
+        elif(self.fs_enable == 'xgb'):
+
+            clf = XGBClassifier(n_estimators=100, random_state=0)
+            clf.fit(X, y)
+            importance = importance_to_index(clf, 0.2)
+
+            X = X[importance]
+
+            print('重要屬性index:', importance)
+            #print(X)
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+
+            X = X.to_numpy()
+            y = y.to_numpy()                    
+
+        elif(self.fs_enable == 'var'):
+            pipe_fs = Pipeline(
+                   [
+                     ('filter', feature_selection(method = 'var'))
+                   ])
+            X = pipe_fs.fit_transform(X, y)        
+            print('弱分類器輸入資料維度 : ', len(X.columns))           
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+            
+            X = X.to_numpy()
+            y = y.to_numpy()
+
+        elif(self.fs_enable == 'corr'):
+            pipe_fs = Pipeline(
+                   [
+                     ('filter', feature_selection(method = 'corr'))
+                   ])
+            X = pipe_fs.fit_transform(X, y)        
+            print('弱分類器輸入資料維度 : ', len(X.columns))           
+
+            self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
+            XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
+            
+            X = X.to_numpy()
+            y = y.to_numpy()
+        
         else:
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1467,15 +1627,15 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 #---------------------------------------------------------------------------------------------------------  
 
 
-        # Stop if the error is at least as bad as random guessing
+        # # Stop if the error is at least as bad as random guessing
         
-        if estimator_error >= 1. - (1. / n_classes):
-            self.estimators_.pop(-1)
-            if len(self.estimators_) == 0:
-                raise ValueError('BaseClassifier in AdaBoostClassifier '
-                                 'ensemble is worse than random, ensemble '
-                                 'can not be fit.')
-            return None, None, None
+        # if estimator_error >= 1. - (1. / n_classes):
+        #     self.estimators_.pop(-1)
+        #     if len(self.estimators_) == 0:
+        #         raise ValueError('BaseClassifier in AdaBoostClassifier '
+        #                          'ensemble is worse than random, ensemble '
+        #                          'can not be fit.')
+        #     return None, None, None
         
 
         # Boost weight using multi-class AdaBoost SAMME alg
@@ -1483,6 +1643,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         estimator_weight = self.learning_rate * (
             np.log((1. - estimator_error) / estimator_error) +
             np.log(n_classes - 1.))
+        self.yowai_estimator_error = estimator_error
         print('SAMME弱分類器權重:', estimator_weight)
 
         # Only boost the weights if I will fit again
