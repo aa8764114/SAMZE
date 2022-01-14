@@ -120,6 +120,9 @@ class BaseWeightBoosting(BaseEnsemble, metaclass=ABCMeta):
 
         #若分類器的錯誤率
         self.yowai_estimator_error = 0
+
+        #建模前的屬性重要性
+        self.my_feature_importance_ = []
         
 
         # Initializion of the random number instance that will be used to
@@ -153,10 +156,10 @@ class BaseWeightBoosting(BaseEnsemble, metaclass=ABCMeta):
                 break
 
             #如果若分類器權重大於亂猜
-            print('抄出來的若分類器錯誤率：', self.yowai_estimator_error, '資料有幾類：',  len(self.classes_))
-            print('亂猜的錯誤率：', (1. / len(self.classes_)))
-            if self.yowai_estimator_error >= 1. - (1. / len(self.classes_)):
-                break
+            # print('抄出來的若分類器錯誤率：', self.yowai_estimator_error, '資料有幾類：',  len(self.classes_))
+            # print('亂猜的錯誤率：', (1. / len(self.classes_)))
+            # if self.yowai_estimator_error >= 1. - (1. / len(self.classes_)):
+            #     break
 
 
             if iboost < self.n_estimators - 1:
@@ -415,7 +418,14 @@ def index_to_colname(indexs, oridata):
         colname.append(list(x_.columns)[i])
     
     return(colname)
-    
+
+#紀錄建力弱分類器前的屬性重要性
+def append_my_feature_importance(self, clf, estimator_weight):
+        importances = pd.Series(clf.feature_importances_)
+        s = importances * estimator_weight
+        s.tolist()
+        self.my_feature_importance_.append(s)
+
 class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
 
     def __init__(self,
@@ -655,11 +665,11 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
         #print('SAMME弱分類器錯誤率 : ', estimator_error)
 
         
-        if(estimator_error == 0.5):
-            estimator_error = 0.50000000000001
-        elif(estimator_error == 1.0):
-            estimator_error = 0.99999999999999
-        print('弱分類器錯誤率:', estimator_error)
+        # if(estimator_error == 0.5):
+        #     estimator_error = 0.50000000000001
+        # elif(estimator_error == 1.0):
+        #     estimator_error = 0.99999999999999
+        # print('弱分類器錯誤率:', estimator_error)
 
 #---------------------------------------------------------------------------------------------------------  
 
@@ -670,16 +680,16 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
         n_classes = self.n_classes_
         
         #弱分類器錯誤率太高停止
-        '''
+        
         # Stop if the error is at least as bad as random guessing
-        if estimator_error >= 1. - (1. / n_classes):
-            self.estimators_.pop(-1)
-            if len(self.estimators_) == 0:
-                raise ValueError('BaseClassifier in AdaBoostClassifier '
-                                 'ensemble is worse than random, ensemble '
-                                 'can not be fit.')
-            return None, None, None
-        '''
+        # if estimator_error >= 1. - (1. / n_classes):
+        #     self.estimators_.pop(-1)
+        #     if len(self.estimators_) == 0:
+        #         raise ValueError('BaseClassifier in AdaBoostClassifier '
+        #                          'ensemble is worse than random, ensemble '
+        #                          'can not be fit.')
+        #     return None, None, None
+        
         
         # Boost weight using multi-class AdaBoost SAMME alg
         estimator_weight = self.learning_rate * (
@@ -958,14 +968,16 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
     def __init__(self,
                  base_estimator=None, *,
-                 n_estimators=50,
+                 n_estimators=100,
                  learning_rate=1.,
-                 algorithm='SAMME.R',
+                 algorithm='SAMME',
                  random_state=None,
                  
                  #我自己加的參數
-                 fs_enable='anova_kf',
+                 fs_enable='gini',
+                 fs_mode = 0,
                  estimator_error_calc=0,
+                 fs_threshold = 0.6
 
                  ):
 
@@ -978,7 +990,9 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         self.algorithm = algorithm
         
         self.fs_enable = fs_enable
+        self.fs_mode = fs_mode
         self.estimator_error_calc = estimator_error_calc
+        self.fs_threshold = fs_threshold
 
     def fit(self, X, y, sample_weight=None):
 
@@ -1033,7 +1047,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         #print(df_merge)        
         
         """自己做有放回抽樣"""
-        #print(sample_weight)
+        print(sample_weight[:10])
         df_merge = df_merge.sample(frac=1, replace=1, weights=sample_weight, axis='index')
 
         """把輸出入屬性拆開"""
@@ -1103,7 +1117,11 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = DecisionTreeClassifier(criterion=self.fs_enable, random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
+
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
 
             X = X[importance]
 
@@ -1120,7 +1138,11 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = DecisionTreeClassifier(criterion=self.fs_enable, random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
+
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
 
             X = X[importance]
 
@@ -1137,8 +1159,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = RandomForestClassifier(n_estimators=100, criterion='gini', random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
-
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
             print('重要屬性index:', importance)
@@ -1154,8 +1178,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = RandomForestClassifier(n_estimators=100, criterion='entropy', random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
-
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
             print('重要屬性index:', importance)
@@ -1171,8 +1197,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = XGBClassifier(n_estimators=100, random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
-
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
             print('重要屬性index:', importance)
@@ -1274,6 +1302,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             np.log(n_classes - 1.))
         self.yowai_estimator_error = estimator_error
         print("SAMME.R弱分類器權重:", samme_estimator_weight)
+
+        # append_my_feature_importance(self, clf, samme_estimator_weight)
 #------------------------------------------------------------------------------  
         # Construct y coding as described in Zhu et al [2]:
         #
@@ -1330,7 +1360,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         #print(df_merge)        
         
         """自己做有放回抽樣"""
-        #print(sample_weight)
+        print(sample_weight[:10])
         df_merge = df_merge.sample(frac=1, replace=1, weights=sample_weight, axis='index')
 
         """把輸出入屬性拆開"""
@@ -1401,8 +1431,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = DecisionTreeClassifier(criterion='gini', random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
-
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
             print('重要屬性index:', importance)
@@ -1418,8 +1450,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = DecisionTreeClassifier(criterion='entropy', random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
-
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
             print('重要屬性index:', importance)
@@ -1435,8 +1469,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = RandomForestClassifier(n_estimators=100, criterion='gini', random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
-
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
             print('重要屬性index:', importance)
@@ -1452,8 +1488,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = RandomForestClassifier(n_estimators=100, criterion='entropy', random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
-
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
             print('重要屬性index:', importance)
@@ -1469,8 +1507,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             clf = XGBClassifier(n_estimators=100, random_state=0)
             clf.fit(X, y)
-            importance = importance_to_index(clf, 0.2)
-
+            if(self.fs_mode == 1):
+                importance = importance_to_index(clf, 1)
+            else:
+                importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
             print('重要屬性index:', importance)
@@ -1645,6 +1685,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             np.log(n_classes - 1.))
         self.yowai_estimator_error = estimator_error
         print('SAMME弱分類器權重:', estimator_weight)
+
+        # append_my_feature_importance(self, clf, estimator_weight)
 
         # Only boost the weights if I will fit again
         if not iboost == self.n_estimators - 1:
@@ -1871,6 +1913,13 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                 ans2.append(i[0])
             return(ans2)
 
+
+    def get_my_feature_importance(self):
+        final_my_fl = []
+        fi_df = pd.DataFrame(self.my_feature_importance_)
+        for i in range(len(fi_df.columns)):
+            final_my_fl.append(fi_df[i].sum())
+        return final_my_fl
 
 class AdaBoostRegressor(RegressorMixin, BaseWeightBoosting):
     """An AdaBoost regressor.
