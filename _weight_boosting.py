@@ -142,7 +142,7 @@ class BaseWeightBoosting(BaseEnsemble, metaclass=ABCMeta):
                 break
 
             self.estimator_weights_[iboost] = estimator_weight
-            #print(estimator_weight)
+            #p-rint(estimator_weight)
             self.estimator_errors_[iboost] = estimator_error
 
             # Stop if error is zero
@@ -156,8 +156,8 @@ class BaseWeightBoosting(BaseEnsemble, metaclass=ABCMeta):
                 break
 
             #如果若分類器權重大於亂猜
-            # print('抄出來的若分類器錯誤率：', self.yowai_estimator_error, '資料有幾類：',  len(self.classes_))
-            # print('亂猜的錯誤率：', (1. / len(self.classes_)))
+            # #print('抄出來的若分類器錯誤率：', self.yowai_estimator_error, '資料有幾類：',  len(self.classes_))
+            # #print('亂猜的錯誤率：', (1. / len(self.classes_)))
             # if self.yowai_estimator_error >= 1. - (1. / len(self.classes_)):
             #     break
 
@@ -283,7 +283,7 @@ def _samme_proba(estimator, n_classes, X):
     .. [1] J. Zhu, H. Zou, S. Rosset, T. Hastie, "Multi-class AdaBoost", 2009.
 
     """
-    #print(X.shape[1])
+    #p-rint(X.shape[1])
     proba = estimator.predict_proba(X)
 
     # Displace zero probabilities so the log is defined.
@@ -301,20 +301,20 @@ def _samme_proba(estimator, n_classes, X):
 #error: all,看所有資料計算錯誤率  semi,只看分錯的資料計算錯誤率
 def samze_weight(proba, act_ans, error):
     
-    #print(proba)
-    #print(type(proba))
-    #print(proba.shape)
+    #p-rint(proba)
+    #p-rint(type(proba))
+    #p-rint(proba.shape)
     
     
     #將預測機率四捨五入
     proba_temp = []
 
     for i in proba:
-        #print(i)
-        #print(type(i))
+        #p-rint(i)
+        #p-rint(type(i))
         sumone= softmax(i)#將數值總和調整為1
         zun = list(np.around(sumone, 5))#把數值四捨五入以免存不下
-        #print(zun)
+        #p-rint(zun)
         proba_temp.append(zun)    
     proba = proba_temp
     
@@ -337,28 +337,28 @@ def samze_weight(proba, act_ans, error):
         else:
             wrong_prob.append(sum(p)-i[aa])
 
-    #print(sum(wrong_prob))
-    #print(sum(sum_prob))
+    #p-rint(sum(wrong_prob))
+    #p-rint(sum(sum_prob))
     return(sum(wrong_prob)/sum(sum_prob))
 
 
 #將每筆資料預測與實際答案對照，輸出每筆資料在預測中錯誤的機率
 def error_prob(proba, act_ans):
     
-    #print(proba)
-    #print(type(proba))
-    #print(proba.shape)
+    #p-rint(proba)
+    #p-rint(type(proba))
+    #p-rint(proba.shape)
     
     
     #將預測機率四捨五入
     proba_temp = []
 
     for i in proba:
-        #print(i)
-        #print(type(i))
+        #p-rint(i)
+        #p-rint(type(i))
         sumone= softmax(i)#將數值總和調整為1
         zun = list(np.around(sumone, 5))#把數值四捨五入以免存不下
-        #print(zun)
+        #p-rint(zun)
         proba_temp.append(zun)    
     proba = proba_temp
     
@@ -388,11 +388,11 @@ def act_ans_prob(proba, act_ans):
     #將預測機率四捨五入
     proba_temp = []
     for i in proba:
-        #print(i)
-        #print(type(i))
+        #p-rint(i)
+        #p-rint(type(i))
         sumone= softmax(i)#將數值總和調整為1
         zun = list(np.around(sumone, 5))#把數值四捨五入以免存不下
-        #print(zun)
+        #p-rint(zun)
         proba_temp.append(zun)    
     proba = proba_temp
     
@@ -607,7 +607,7 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
 
         # Instances incorrectly classified
         incorrect = y_predict != y
-        #print('預測錯誤的:', incorrect)
+        #p-rint('預測錯誤的:', incorrect)
 
 
 #---------------------------------------------------------------------------------------------------------        
@@ -616,25 +616,25 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
         #原方法
         estimator_error_o = np.mean(
             np.average(incorrect, weights=sample_weight, axis=0))
-        #print('SAMME弱分類器錯誤率 : ', estimator_error_o)
+        #p-rint('SAMME弱分類器錯誤率 : ', estimator_error_o)
         #'''
         
         #'''
         #我的方法
         n_classes = self.n_classes_        
         proba = _samme_proba(estimator, n_classes, X)
-        #print('SAMME弱分類器預測機率:', proba)
+        #p-rint('SAMME弱分類器預測機率:', proba)
         
         act_ans = list(y)
 
-        #print('轉list:', list(act_ans))
-        #print('實際答案:', act_ans)
-        #print('答案維度:', act_ans.shape)
-        #print('答案型態:', type(act_ans))
+        #p-rint('轉list:', list(act_ans))
+        #p-rint('實際答案:', act_ans)
+        #p-rint('答案維度:', act_ans.shape)
+        #p-rint('答案型態:', type(act_ans))
 
         #estimator_error_my_all = samze_weight(proba, act_ans, error = 'all') #不管分對或錯都計算錯誤率
         #estimator_error_my_semi = samze_weight(proba, act_ans, error = 'semi') #只有分錯的計算錯誤率       
-        #print('SAMME改弱分類器錯誤率 : ', estimator_error_my)
+        #p-rint('SAMME改弱分類器錯誤率 : ', estimator_error_my)
         #'''
 
         #方法一，原方法        
@@ -660,16 +660,16 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
         
         #方法五，將 各資料的權重*實際答案在弱分類器的預測機率 平均
         error_probs = error_prob(proba, act_ans)
-        #print('實際答案在弱分類器的預測機率 : ', len(actans_prob))
+        #p-rint('實際答案在弱分類器的預測機率 : ', len(actans_prob))
         estimator_error = np.mean(np.average(error_probs, weights=sample_weight, axis=0))
-        #print('SAMME弱分類器錯誤率 : ', estimator_error)
+        #p-rint('SAMME弱分類器錯誤率 : ', estimator_error)
 
         
         # if(estimator_error == 0.5):
         #     estimator_error = 0.50000000000001
         # elif(estimator_error == 1.0):
         #     estimator_error = 0.99999999999999
-        # print('弱分類器錯誤率:', estimator_error)
+        # #print('弱分類器錯誤率:', estimator_error)
 
 #---------------------------------------------------------------------------------------------------------  
 
@@ -696,7 +696,7 @@ class AdaBoostClassifier(ClassifierMixin, BaseWeightBoosting):
             np.log((1. - estimator_error) / estimator_error) +
             np.log(n_classes - 1.))
         
-        print('SAMME弱分類器權重:', estimator_weight, '\n')
+        #print('SAMME弱分類器權重:', estimator_weight, '\n')
 
         # Only boost the weights if I will fit again
         if not iboost == self.n_estimators - 1:
@@ -1044,10 +1044,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         y.columns = ['y']
         
         df_merge = X.merge(y, how='inner', left_index=True, right_index=True)#輸出入資料合併
-        #print(df_merge)        
+        #p-rint(df_merge)        
         
         """自己做有放回抽樣"""
-        print(sample_weight[:10])
+        #print(sample_weight[:10])
         df_merge = df_merge.sample(frac=1, replace=1, weights=sample_weight, axis='index')
 
         """把輸出入屬性拆開"""
@@ -1063,7 +1063,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         """自己做特徵選擇"""
         if(self.fs_enable == 'anova_kf'):
             #X = pd.DataFrame(X)
-            #print(X[:10])
+            #p-rint(X[:10])
             
             #95%信心水準挑選
             pipe_fs = Pipeline(
@@ -1087,31 +1087,31 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             #條件判斷
             if(len(X1.columns)!=0): #95%有特
                 X = X1
-                print('X1')
+                #print('X1')
 
             elif(len(X1.columns)==0):#95%沒特，看50%有無
 
                 if(len(X2.columns)!=0): #50%有特
                     X = X2
-                    print('X2')
+                    #print('X2')
                     
                 elif(len(X2.columns)==0):
                     X = X3
-                    print('X3')
+                    #print('X3')
 
-            print('弱分類器輸入資料維度 : ', len(X.columns))           
+            #print('弱分類器輸入資料維度 : ', len(X.columns))           
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
             
-            #print(X)
+            #p-rint(X)
             X = X.to_numpy()
             y = y.to_numpy()
 
             
-            #print(y)
-            #print("-----------------------")
-            #print(yo)
+            #p-rint(y)
+            #p-rint("-----------------------")
+            #p-rint(yo)
 
         elif(self.fs_enable == 'gini'):
 
@@ -1125,8 +1125,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1146,8 +1146,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1165,8 +1165,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                 importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1184,8 +1184,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                 importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1203,8 +1203,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                 importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1218,7 +1218,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                      ('filter', feature_selection(method = 'var'))
                    ])
             X = pipe_fs.fit_transform(X, y)        
-            print('弱分類器輸入資料維度 : ', len(X.columns))           
+            #print('弱分類器輸入資料維度 : ', len(X.columns))           
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1232,7 +1232,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                      ('filter', feature_selection(method = 'corr'))
                    ])
             X = pipe_fs.fit_transform(X, y)        
-            print('弱分類器輸入資料維度 : ', len(X.columns))           
+            #print('弱分類器輸入資料維度 : ', len(X.columns))           
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1268,14 +1268,14 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                                        axis=0)
 
         # Instances incorrectly classified
-        #print('臥草 : ', len(yo))
+        #p-rint('臥草 : ', len(yo))
         #incorrect = y_predict != y
         incorrect = y_predict != yo #應該要跟所有資料比
 
         # Error fraction
         estimator_error = np.mean(
             np.average(incorrect, weights=sample_weight, axis=0))
-        print("SAMME.R弱分類器錯誤率:", estimator_error)
+        #print("SAMME.R弱分類器錯誤率:", estimator_error)
 
         # Stop if classification is perfect(分類器太好的話就停)
         # if estimator_error <= 0:
@@ -1301,9 +1301,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             np.log((1. - estimator_error) / estimator_error) +
             np.log(n_classes - 1.))
         self.yowai_estimator_error = estimator_error
-        print("SAMME.R弱分類器權重:", samme_estimator_weight)
+        #print("SAMME.R弱分類器權重:", samme_estimator_weight)
 
-        # append_my_feature_importance(self, clf, samme_estimator_weight)
+        if(self.fs_mode == 1):
+            append_my_feature_importance(self, clf, samme_estimator_weight)
 #------------------------------------------------------------------------------  
         # Construct y coding as described in Zhu et al [2]:
         #
@@ -1357,10 +1358,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         y.columns = ['y']
         
         df_merge = X.merge(y, how='inner', left_index=True, right_index=True)#輸出入資料合併
-        #print(df_merge)        
+        #p-rint(df_merge)        
         
         """自己做有放回抽樣"""
-        print(sample_weight[:10])
+        #print(sample_weight[:10])
         df_merge = df_merge.sample(frac=1, replace=1, weights=sample_weight, axis='index')
 
         """把輸出入屬性拆開"""
@@ -1377,7 +1378,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         if(self.fs_enable == 'anova_kf'):
 
             #X = pd.DataFrame(X)
-            #print(X[:10])
+            #p-rint(X[:10])
             
             #95%信心水準挑選
             pipe_fs = Pipeline(
@@ -1401,19 +1402,19 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             #條件判斷
             if(len(X1.columns)!=0): #95%有特
                 X = X1
-                print('X1')
+                #print('X1')
 
             elif(len(X1.columns)==0):#95%沒特，看50%有無
 
                 if(len(X2.columns)!=0): #50%有特
                     X = X2
-                    print('X2')
+                    #print('X2')
                     
                 elif(len(X2.columns)==0):
                     X = X3
-                    print('X3')
+                    #print('X3')
 
-            print('弱分類器輸入資料維度 : ', len(X.columns))           
+            #print('弱分類器輸入資料維度 : ', len(X.columns))           
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1422,9 +1423,9 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             y = y.to_numpy()
 
             
-            #print(y)
-            #print("-----------------------")
-            #print(yo)
+            #p-rint(y)
+            #p-rint("-----------------------")
+            #p-rint(yo)
         
 
         elif(self.fs_enable == 'gini'):
@@ -1437,8 +1438,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                 importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1456,8 +1457,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                 importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1475,8 +1476,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                 importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1494,8 +1495,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                 importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1513,8 +1514,8 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                 importance = importance_to_index(clf, self.fs_threshold)
             X = X[importance]
 
-            print('重要屬性index:', importance)
-            #print(X)
+            #print('重要屬性index:', importance)
+            #p-rint(X)
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1528,7 +1529,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                      ('filter', feature_selection(method = 'var'))
                    ])
             X = pipe_fs.fit_transform(X, y)        
-            print('弱分類器輸入資料維度 : ', len(X.columns))           
+            #print('弱分類器輸入資料維度 : ', len(X.columns))           
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1542,7 +1543,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
                      ('filter', feature_selection(method = 'corr'))
                    ])
             X = pipe_fs.fit_transform(X, y)        
-            print('弱分類器輸入資料維度 : ', len(X.columns))           
+            #print('弱分類器輸入資料維度 : ', len(X.columns))           
 
             self.estimators_features_.append(X.columns)#把該弱分類器挑選的屬性存下來
             XO = XO[X.columns]#把屬性選擇後的屬性套用在原始資料
@@ -1585,25 +1586,25 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         #原方法
         estimator_error_o = np.mean(
             np.average(incorrect, weights=sample_weight, axis=0))
-        #print('SAMME弱分類器錯誤率 : ', estimator_error_o)
+        #p-rint('SAMME弱分類器錯誤率 : ', estimator_error_o)
         #'''
         
         #'''
         #我的方法
         n_classes = self.n_classes_        
         proba = _samme_proba(estimator, n_classes, X)
-        #print('SAMME弱分類器預測機率:', proba)
+        #p-rint('SAMME弱分類器預測機率:', proba)
         
         act_ans = list(y)
 
-        #print('轉list:', list(act_ans))
-        #print('實際答案:', act_ans)
-        #print('答案維度:', act_ans.shape)
-        #print('答案型態:', type(act_ans))
+        #p-rint('轉list:', list(act_ans))
+        #p-rint('實際答案:', act_ans)
+        #p-rint('答案維度:', act_ans.shape)
+        #p-rint('答案型態:', type(act_ans))
 
         
                
-        #print('SAMME改弱分類器錯誤率 : ', estimator_error_my)
+        #p-rint('SAMME改弱分類器錯誤率 : ', estimator_error_my)
         #'''
 
         #方法零，原方法
@@ -1643,17 +1644,17 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         #方法七，將 各資料的權重*實際答案在弱分類器的預測機率（看全部資料） 平均
         elif(self.estimator_error_calc == 7):          
             error_probs = error_prob(proba, act_ans)
-            #print('實際答案在弱分類器的預測機率 : ', len(actans_prob))
+            #p-rint('實際答案在弱分類器的預測機率 : ', len(actans_prob))
             estimator_error = np.mean(np.average(error_probs, weights=sample_weight, axis=0))
-            #print('SAMME弱分類器錯誤率 : ', estimator_error)
+            #p-rint('SAMME弱分類器錯誤率 : ', estimator_error)
 
         #方法八，將 各資料的權重*實際答案在弱分類器的預測機率（看分錯資料） 平均
         elif(self.estimator_error_calc == 8):          
             error_probs = error_prob(proba, act_ans)
-            #print('實際答案在弱分類器的預測機率 : ', len(actans_prob))
+            #p-rint('實際答案在弱分類器的預測機率 : ', len(actans_prob))
             incorrect_error_probs = error_probs * incorrect
             estimator_error = np.mean(np.average(incorrect_error_probs, weights=sample_weight, axis=0))
-            #print('SAMME弱分類器錯誤率 : ', estimator_error)
+            #p-rint('SAMME弱分類器錯誤率 : ', estimator_error)
 
         else:
             estimator_error = estimator_error_o
@@ -1662,7 +1663,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             estimator_error = 0.50000000000001
         elif(estimator_error == 1.0):
             estimator_error = 0.99999999999999
-        print('弱分類器錯誤率:', estimator_error)
+        #print('弱分類器錯誤率:', estimator_error)
 
 #---------------------------------------------------------------------------------------------------------  
 
@@ -1684,9 +1685,10 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
             np.log((1. - estimator_error) / estimator_error) +
             np.log(n_classes - 1.))
         self.yowai_estimator_error = estimator_error
-        print('SAMME弱分類器權重:', estimator_weight)
+        #print('SAMME弱分類器權重:', estimator_weight)
 
-        # append_my_feature_importance(self, clf, estimator_weight)
+        if(self.fs_mode == 1):
+            append_my_feature_importance(self, clf, estimator_weight)
 
         # Only boost the weights if I will fit again
         if not iboost == self.n_estimators - 1:
@@ -1725,17 +1727,17 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
 
     def decision_function(self, X):
         X = pd.DataFrame(X)
-        #print('臥草:', type(X))
-        #print('NMSL:', X)
-        #print(self.estimators_features_)
-        #print(type(self.estimators_features_[0][0]))
+        #p-rint('臥草:', type(X))
+        #p-rint('NMSL:', X)
+        #p-rint(self.estimators_features_)
+        #p-rint(type(self.estimators_features_[0][0]))
         #for fsl in self.estimators_features_:
-            #print(list(fsl))
-            #print(X[list(fsl)].shape[1])
+            #p-rint(list(fsl))
+            #p-rint(X[list(fsl)].shape[1])
         
-        #print(self.estimators_)
-        #print('estimator_weights_ : ', len(self.estimator_weights_))
-        #print(self.estimator_weights_)
+        #p-rint(self.estimators_)
+        #p-rint('estimator_weights_ : ', len(self.estimator_weights_))
+        #p-rint(self.estimator_weights_)
 
         check_is_fitted(self)
         X = self._check_X(X)
@@ -1769,12 +1771,12 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         X = X.to_numpy()#做完再改回ndarray
         pred = np.array(pred)
         
-        #print(X.shape)
-        #print(type(X))
-        #print(X)
-        #print(pred)
-        #print(type(pred))
-        #print(len(pred))        
+        #p-rint(X.shape)
+        #p-rint(type(X))
+        #p-rint(X)
+        #p-rint(pred)
+        #p-rint(type(pred))
+        #p-rint(len(pred))        
 #-------------------------------------------------------------------------------
                                                
 
@@ -1883,7 +1885,7 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         all_features = []
         for i in estimator_features_:
             i = list(i)
-            #print(i)
+            #p-rint(i)
             all_features += i
 
         select_feature_ = set(all_features)
@@ -1894,9 +1896,9 @@ class AdaBoostClassifierZe(ClassifierMixin, BaseWeightBoosting):
         for i in select_feature_:
             fwt = []
             fwt.append(i)
-            #print(i)
+            #p-rint(i)
             fwt.append(self.get_feature_weight(i, fs))
-            #print(get_feature_weight(i, fs))
+            #p-rint(get_feature_weight(i, fs))
             ans.append(fwt)
 
         #將結果排序
